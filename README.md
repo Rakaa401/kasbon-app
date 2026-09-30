@@ -61,7 +61,7 @@ supabase/
 ### 1. Clone the repository
 
 ```bash
-git clone YOUR-REPOSITORY-URL
+git clone 
 cd kasbon
 ```
 
@@ -258,7 +258,7 @@ After deployment, verify:
 
 ## Time Spent
 
-Approximately `X hours` including implementation, testing, RLS verification, responsive adjustments, and deployment preparation.
+Approximately 4 hours, including implementation, testing, RLS verification, responsive improvements, and deployment preparation.
 
 ## License
 
