@@ -467,64 +467,65 @@ export default function TransactionManager({
         </section>
 
         <section className="mt-8 rounded-2xl border border-zinc-200 bg-white">
-          <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 md:flex-row">
-            <div className="relative flex-1">
-              <Search
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
-              />
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Cari nama..."
-                className="w-full rounded-xl border border-zinc-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-zinc-900"
-              />
-            </div>
+  <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 md:flex-row md:items-center">
+  <div className="relative w-full md:flex-1">
+    <Search
+      size={18}
+      className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
+    />
 
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none"
-            >
-              <option value="all">Semua status</option>
-              <option value="unpaid">Belum lunas</option>
-              <option value="settled">Lunas</option>
-            </select>
+    <input
+      type="search"
+      value={search}
+      onChange={(event) => setSearch(event.target.value)}
+      placeholder="Cari nama..."
+      className="h-11 w-full rounded-xl border border-zinc-200 bg-white py-2.5 pl-10 pr-4 text-sm text-zinc-700 outline-none transition focus:border-zinc-400"
+    />
+  </div>
 
-            <select
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value)}
-              className="rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none"
-            >
-              <option value="all">Semua tipe</option>
-              <option value="owed_to_me">Dihutang</option>
-              <option value="i_owe">Saya hutang</option>
-            </select>
+  <select
+    value={statusFilter}
+    onChange={(event) => setStatusFilter(event.target.value)}
+    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none transition focus:border-zinc-400 md:w-auto"
+  >
+    <option value="all">Semua status</option>
+    <option value="unpaid">Belum lunas</option>
+    <option value="settled">Lunas</option>
+  </select>
 
-            <select
-  value={sortBy}
-  onChange={(event) => setSortBy(event.target.value)}
-  className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 outline-none transition focus:border-zinc-400"
->
-  <option value="newest">Terbaru</option>
-  <option value="oldest">Terlama</option>
-  <option value="amount_desc">Nominal terbesar</option>
-  <option value="amount_asc">Nominal terkecil</option>
-</select>
+  <select
+    value={typeFilter}
+    onChange={(event) => setTypeFilter(event.target.value)}
+    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none transition focus:border-zinc-400 md:w-auto"
+  >
+    <option value="all">Semua tipe</option>
+    <option value="owed_to_me">Dihutang</option>
+    <option value="i_owe">Saya hutang</option>
+  </select>
 
-<button
-  type="button"
-  onClick={() => setGroupByPerson((value) => !value)}
-  className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
-    groupByPerson
-      ? "border-zinc-900 bg-zinc-900 text-white"
-      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100"
-  }`}
->
-  {groupByPerson ? "Per orang" : "Gabungkan orang"}
-</button>
-          </div>
+  <select
+    value={sortBy}
+    onChange={(event) => setSortBy(event.target.value)}
+    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none transition focus:border-zinc-400 md:w-auto"
+  >
+    <option value="newest">Terbaru</option>
+    <option value="oldest">Terlama</option>
+    <option value="amount_desc">Nominal terbesar</option>
+    <option value="amount_asc">Nominal terkecil</option>
+  </select>
+
+  <button
+    type="button"
+    onClick={() => setGroupByPerson((value) => !value)}
+    className={`h-11 w-full rounded-xl border px-3 text-sm font-medium transition md:w-auto ${
+      groupByPerson
+        ? "border-zinc-900 bg-zinc-900 text-white"
+        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
+    }`}
+  >
+    {groupByPerson ? "Per orang" : "Gabungkan orang"}
+  </button>
+</div>
 
           {error && (
             <div className="m-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
