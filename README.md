@@ -4,7 +4,7 @@ Kasbon is a simple personal debt tracker built with Next.js and Supabase. It hel
 
 ## Demo
 
-Vercel demo: `https://link.vercl.app`
+Vercel demo: `https://kasbon-app-livid.vercel.app/`
 
 ## Features
 
