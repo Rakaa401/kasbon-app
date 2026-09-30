@@ -33,6 +33,12 @@ type Debt = {
   updated_at: string;
 };
 
+type DebtGroup = {
+  name: string;
+  debts: Debt[];
+  total: number;
+};
+
 type FormData = {
   type: DebtType;
   counterpart_name: string;
@@ -54,6 +60,7 @@ function formatRelativeDate(date: string) {
     now.getMonth(),
     now.getDate(),
   );
+
   const diff = today.getTime() - target.getTime();
   const days = Math.floor(diff / 86400000);
 
@@ -94,9 +101,13 @@ export default function TransactionManager({
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [groupByPerson, setGroupByPerson] = useState(false);
+
   const [form, setForm] = useState<FormData>(initialForm);
 
   async function fetchDebts() {
@@ -106,8 +117,10 @@ export default function TransactionManager({
     try {
       const response = await fetch("/api/debts");
 
-      const result: { data?: Debt[]; error?: string } =
-        await response.json();
+      const result: {
+        data?: Debt[];
+        error?: string;
+      } = await response.json();
 
       if (!response.ok) {
         throw new Error(result.error ?? "Gagal mengambil data.");
@@ -125,7 +138,9 @@ export default function TransactionManager({
 
   const summary = useMemo(() => {
     const owedToMe = debts
-      .filter((debt) => debt.type === "owed_to_me" && !debt.settled_at)
+      .filter(
+        (debt) => debt.type === "owed_to_me" && !debt.settled_at,
+      )
       .reduce((total, debt) => total + debt.amount, 0);
 
     const iOwe = debts
@@ -142,7 +157,7 @@ export default function TransactionManager({
   const filteredDebts = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return debts.filter((debt) => {
+    const result = debts.filter((debt) => {
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "unpaid" && !debt.settled_at) ||
@@ -157,19 +172,67 @@ export default function TransactionManager({
 
       return matchesStatus && matchesType && matchesSearch;
     });
-  }, [debts, statusFilter, typeFilter, search]);
+
+    return result.sort((a, b) => {
+      if (sortBy === "amount_desc") {
+        return b.amount - a.amount;
+      }
+
+      if (sortBy === "amount_asc") {
+        return a.amount - b.amount;
+      }
+
+      if (sortBy === "oldest") {
+        return (
+          new Date(a.created_at).getTime() -
+          new Date(b.created_at).getTime()
+        );
+      }
+
+      return (
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime()
+      );
+    });
+  }, [debts, statusFilter, typeFilter, search, sortBy]);
+
+  const debtGroups = useMemo(() => {
+    const groups = new Map<string, DebtGroup>();
+
+    filteredDebts.forEach((debt) => {
+      const key = debt.counterpart_name.trim().toLowerCase();
+      const existing = groups.get(key);
+
+      if (existing) {
+        existing.debts.push(debt);
+        existing.total += debt.amount;
+        return;
+      }
+
+      groups.set(key, {
+        name: debt.counterpart_name,
+        debts: [debt],
+        total: debt.amount,
+      });
+    });
+
+    return Array.from(groups.values());
+  }, [filteredDebts]);
 
   function openCreateModal() {
     setEditingId(null);
+
     setForm({
       ...initialForm,
       due_date: getToday(),
     });
+
     setModalOpen(true);
   }
 
   function openEditModal(debt: Debt) {
     setEditingId(debt.id);
+
     setForm({
       type: debt.type,
       counterpart_name: debt.counterpart_name,
@@ -177,12 +240,14 @@ export default function TransactionManager({
       due_date: debt.due_date ?? "",
       note: debt.note ?? "",
     });
+
     setModalOpen(true);
   }
 
   function closeModal() {
     setModalOpen(false);
     setEditingId(null);
+
     setForm({
       ...initialForm,
       due_date: getToday(),
@@ -312,7 +377,7 @@ export default function TransactionManager({
       );
     }
   }
-  
+
   return (
     <main className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -405,6 +470,29 @@ export default function TransactionManager({
               <option value="owed_to_me">Dihutang</option>
               <option value="i_owe">Saya hutang</option>
             </select>
+
+            <select
+  value={sortBy}
+  onChange={(event) => setSortBy(event.target.value)}
+  className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 outline-none transition focus:border-zinc-400"
+>
+  <option value="newest">Terbaru</option>
+  <option value="oldest">Terlama</option>
+  <option value="amount_desc">Nominal terbesar</option>
+  <option value="amount_asc">Nominal terkecil</option>
+</select>
+
+<button
+  type="button"
+  onClick={() => setGroupByPerson((value) => !value)}
+  className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+    groupByPerson
+      ? "border-zinc-900 bg-zinc-900 text-white"
+      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100"
+  }`}
+>
+  {groupByPerson ? "Per orang" : "Gabungkan orang"}
+</button>
           </div>
 
           {error && (
@@ -426,86 +514,190 @@ export default function TransactionManager({
             </div>
           ) : (
             <div className="divide-y divide-zinc-100">
-              {filteredDebts.map((debt) => (
-                <div
-                  key={debt.id}
-                  className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between"
+   {groupByPerson
+  ? debtGroups.map((group) => (
+      <div key={group.name} className="divide-y divide-zinc-100">
+        <div className="flex items-center justify-between bg-zinc-50 px-4 py-3">
+          <div>
+            <p className="font-semibold text-zinc-900">
+              {group.name}
+            </p>
+            <p className="text-xs text-zinc-500">
+              {group.debts.length} transaksi
+            </p>
+          </div>
+
+          <p className="font-semibold text-zinc-900">
+            {formatRupiah(group.total)}
+          </p>
+        </div>
+
+        {group.debts.map((debt) => (
+          <div
+            key={debt.id}
+            className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                  debt.type === "owed_to_me"
+                    ? "bg-emerald-50 text-emerald-600"
+                    : "bg-orange-50 text-orange-600"
+                }`}
+              >
+                {debt.type === "owed_to_me" ? (
+                  <ArrowDownLeft size={18} />
+                ) : (
+                  <ArrowUpRight size={18} />
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-zinc-900">
+                  {debt.counterpart_name}
+                </p>
+
+                <p className="text-sm text-zinc-500">
+                  {debt.type === "owed_to_me"
+                    ? "Dihutang ke saya"
+                    : "Saya hutang"}{" "}
+                  · {formatRelativeDate(debt.created_at)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 md:justify-end">
+              <div className="text-right">
+                <p className="font-semibold text-zinc-900">
+                  {formatRupiah(debt.amount)}
+                </p>
+
+                <span
+                  className={`text-xs font-medium ${
+                    debt.settled_at
+                      ? "text-emerald-600"
+                      : "text-orange-600"
+                  }`}
                 >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                        debt.type === "owed_to_me"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-orange-50 text-orange-600"
-                      }`}
-                    >
-                      {debt.type === "owed_to_me" ? (
-                        <ArrowDownLeft size={18} />
-                      ) : (
-                        <ArrowUpRight size={18} />
-                      )}
-                    </div>
+                  {debt.settled_at ? "Lunas" : "Belum lunas"}
+                </span>
+              </div>
 
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-zinc-900">
-                        {debt.counterpart_name}
-                      </p>
-                      <p className="text-sm text-zinc-500">
-                        {debt.type === "owed_to_me"
-                          ? "Dihutang ke saya"
-                          : "Saya hutang"}{" "}
-                        · {formatRelativeDate(debt.created_at)}
-                      </p>
-                    </div>
-                  </div>
+              {!debt.settled_at && (
+                <button
+                  type="button"
+                  onClick={() => handleSettle(debt)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                >
+                  <Check size={15} />
+                  Tandai lunas
+                </button>
+              )}
 
-                  <div className="flex flex-wrap items-center gap-3 md:justify-end">
-                    <div className="text-right">
-                      <p className="font-semibold text-zinc-900">
-                        {formatRupiah(debt.amount)}
-                      </p>
-                      <span
-                        className={`text-xs font-medium ${
-                          debt.settled_at
-                            ? "text-emerald-600"
-                            : "text-orange-600"
-                        }`}
-                      >
-                        {debt.settled_at ? "Lunas" : "Belum lunas"}
-                      </span>
-                    </div>
+              <button
+                type="button"
+                onClick={() => openEditModal(debt)}
+                className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                aria-label="Edit"
+              >
+                <Pencil size={17} />
+              </button>
 
-                    {!debt.settled_at && (
-                      <button
-                        type="button"
-                        onClick={() => handleSettle(debt)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-                      >
-                        <Check size={15} />
-                        Tandai lunas
-                      </button>
-                    )}
+              <button
+                type="button"
+                onClick={() => handleDelete(debt.id)}
+                className="rounded-lg p-2 text-zinc-500 hover:bg-red-50 hover:text-red-600"
+                aria-label="Hapus"
+              >
+                <Trash2 size={17} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    ))
+  : filteredDebts.map((debt) => (
+      <div
+        key={debt.id}
+        className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+              debt.type === "owed_to_me"
+                ? "bg-emerald-50 text-emerald-600"
+                : "bg-orange-50 text-orange-600"
+            }`}
+          >
+            {debt.type === "owed_to_me" ? (
+              <ArrowDownLeft size={18} />
+            ) : (
+              <ArrowUpRight size={18} />
+            )}
+          </div>
 
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(debt)}
-                      className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-                      aria-label="Edit"
-                    >
-                      <Pencil size={17} />
-                    </button>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-zinc-900">
+              {debt.counterpart_name}
+            </p>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(debt.id)}
-                      className="rounded-lg p-2 text-zinc-500 hover:bg-red-50 hover:text-red-600"
-                      aria-label="Hapus"
-                    >
-                      <Trash2 size={17} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+            <p className="text-sm text-zinc-500">
+              {debt.type === "owed_to_me"
+                ? "Dihutang ke saya"
+                : "Saya hutang"}{" "}
+              · {formatRelativeDate(debt.created_at)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 md:justify-end">
+          <div className="text-right">
+            <p className="font-semibold text-zinc-900">
+              {formatRupiah(debt.amount)}
+            </p>
+
+            <span
+              className={`text-xs font-medium ${
+                debt.settled_at
+                  ? "text-emerald-600"
+                  : "text-orange-600"
+              }`}
+            >
+              {debt.settled_at ? "Lunas" : "Belum lunas"}
+            </span>
+          </div>
+
+          {!debt.settled_at && (
+            <button
+              type="button"
+              onClick={() => handleSettle(debt)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+            >
+              <Check size={15} />
+              Tandai lunas
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => openEditModal(debt)}
+            className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            aria-label="Edit"
+          >
+            <Pencil size={17} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleDelete(debt.id)}
+            className="rounded-lg p-2 text-zinc-500 hover:bg-red-50 hover:text-red-600"
+            aria-label="Hapus"
+          >
+            <Trash2 size={17} />
+          </button>
+        </div>
+      </div>
+    ))};
             </div>
           )}
         </section>
