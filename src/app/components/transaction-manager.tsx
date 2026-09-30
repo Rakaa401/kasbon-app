@@ -1,6 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useMemo,
+  useState,
+} from "react";
+
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -11,6 +16,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+
+import LogoutButton from "./logout-button";
 
 type DebtType = "owed_to_me" | "i_owe";
 
@@ -40,12 +47,17 @@ const formatRupiah = (amount: number) =>
   }).format(amount)}`;
 
 function formatRelativeDate(date: string) {
-  const created = new Date(date);
+  const target = new Date(`${date}T00:00:00`);
   const now = new Date();
-  const diff = now.getTime() - created.getTime();
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  const diff = today.getTime() - target.getTime();
   const days = Math.floor(diff / 86400000);
 
-  if (days === 0) return "hari ini";
+  if (days <= 0) return "hari ini";
   if (days === 1) return "kemarin";
   if (days < 7) return `${days} hari lalu`;
   if (days < 30) return `${Math.floor(days / 7)} minggu lalu`;
@@ -54,17 +66,30 @@ function formatRelativeDate(date: string) {
   return `${Math.floor(days / 365)} tahun lalu`;
 }
 
+function getToday() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 const initialForm: FormData = {
   type: "owed_to_me",
   counterpart_name: "",
   amount: "",
-  due_date: new Date().toISOString().split("T")[0],
+  due_date: getToday(),
   note: "",
 };
 
-export default function TransactionManager() {
-  const [debts, setDebts] = useState<Debt[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function TransactionManager({
+  initialDebts,
+}: {
+  initialDebts: Debt[];
+}) {
+  const [debts, setDebts] = useState<Debt[]>(initialDebts);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -78,20 +103,8 @@ export default function TransactionManager() {
     setLoading(true);
     setError("");
 
-    const params = new URLSearchParams();
-
-    if (statusFilter !== "all") {
-      params.set("status", statusFilter);
-    }
-
-    if (typeFilter !== "all") {
-      params.set("type", typeFilter);
-    }
-
-    const query = params.toString();
-
     try {
-      const response = await fetch(`/api/debts${query ? `?${query}` : ""}`);
+      const response = await fetch("/api/debts");
 
       const result: { data?: Debt[]; error?: string } =
         await response.json();
@@ -109,10 +122,6 @@ export default function TransactionManager() {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    fetchDebts();
-  }, [statusFilter, typeFilter]);
 
   const summary = useMemo(() => {
     const owedToMe = debts
@@ -133,16 +142,29 @@ export default function TransactionManager() {
   const filteredDebts = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) return debts;
+    return debts.filter((debt) => {
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "unpaid" && !debt.settled_at) ||
+        (statusFilter === "settled" && Boolean(debt.settled_at));
 
-    return debts.filter((debt) =>
-      debt.counterpart_name.toLowerCase().includes(query),
-    );
-  }, [debts, search]);
+      const matchesType =
+        typeFilter === "all" || debt.type === typeFilter;
+
+      const matchesSearch =
+        !query ||
+        debt.counterpart_name.toLowerCase().includes(query);
+
+      return matchesStatus && matchesType && matchesSearch;
+    });
+  }, [debts, statusFilter, typeFilter, search]);
 
   function openCreateModal() {
     setEditingId(null);
-    setForm(initialForm);
+    setForm({
+      ...initialForm,
+      due_date: getToday(),
+    });
     setModalOpen(true);
   }
 
@@ -159,11 +181,12 @@ export default function TransactionManager() {
   }
 
   function closeModal() {
-    if (submitting) return;
-
     setModalOpen(false);
     setEditingId(null);
-    setForm(initialForm);
+    setForm({
+      ...initialForm,
+      due_date: getToday(),
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -191,12 +214,18 @@ export default function TransactionManager() {
       return;
     }
 
+    if (!form.due_date) {
+      setError("Tanggal wajib diisi.");
+      setSubmitting(false);
+      return;
+    }
+
     const payload = {
       type: form.type,
-      counterpart_name: form.counterpart_name,
+      counterpart_name: form.counterpart_name.trim(),
       amount,
-      due_date: form.due_date || null,
-      note: form.note || null,
+      due_date: form.due_date,
+      note: form.note.trim() || null,
     };
 
     try {
@@ -283,7 +312,7 @@ export default function TransactionManager() {
       );
     }
   }
-
+  
   return (
     <main className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -294,15 +323,18 @@ export default function TransactionManager() {
               Catatan utang piutang
             </h1>
           </div>
+          <div className="flex items-center gap-2">
+            <LogoutButton />
 
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
-          >
-            <Plus size={18} />
-            Catat baru
-          </button>
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
+            >
+              <Plus size={18} />
+              Catat baru
+            </button>
+          </div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-3">
@@ -387,9 +419,7 @@ export default function TransactionManager() {
             </div>
           ) : filteredDebts.length === 0 ? (
             <div className="p-10 text-center">
-              <p className="font-medium text-zinc-900">
-                Belum ada catatan
-              </p>
+              <p className="font-medium text-zinc-900">Belum ada catatan</p>
               <p className="mt-1 text-sm text-zinc-500">
                 Tambahkan catatan utang atau piutang pertama kamu.
               </p>
@@ -525,9 +555,7 @@ export default function TransactionManager() {
                     }
                     className="sr-only"
                   />
-                  <span className="text-sm font-medium">
-                    Saya dihutang
-                  </span>
+                  <span className="text-sm font-medium">Saya dihutang</span>
                 </label>
 
                 <label
@@ -550,9 +578,7 @@ export default function TransactionManager() {
                     }
                     className="sr-only"
                   />
-                  <span className="text-sm font-medium">
-                    Saya hutang
-                  </span>
+                  <span className="text-sm font-medium">Saya hutang</span>
                 </label>
               </div>
 
