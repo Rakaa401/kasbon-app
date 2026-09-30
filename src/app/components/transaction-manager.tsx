@@ -52,25 +52,56 @@ const formatRupiah = (amount: number) =>
     maximumFractionDigits: 0,
   }).format(amount)}`;
 
-function formatRelativeDate(date: string) {
-  const target = new Date(`${date}T00:00:00`);
+function formatRelativeDate(value: string) {
+  const date = new Date(value);
   const now = new Date();
-  const today = new Date(
+
+  if (Number.isNaN(date.getTime())) {
+    return "tanggal tidak valid";
+  }
+
+  const startOfToday = new Date(
     now.getFullYear(),
     now.getMonth(),
     now.getDate(),
   );
 
-  const diff = today.getTime() - target.getTime();
-  const days = Math.floor(diff / 86400000);
+  const startOfDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  );
 
-  if (days <= 0) return "hari ini";
-  if (days === 1) return "kemarin";
-  if (days < 7) return `${days} hari lalu`;
-  if (days < 30) return `${Math.floor(days / 7)} minggu lalu`;
-  if (days < 365) return `${Math.floor(days / 30)} bulan lalu`;
+  const diffDays = Math.floor(
+    (startOfToday.getTime() - startOfDate.getTime()) /
+      (1000 * 60 * 60 * 24),
+  );
 
-  return `${Math.floor(days / 365)} tahun lalu`;
+  if (diffDays === 0) {
+    return "hari ini";
+  }
+
+  if (diffDays === 1) {
+    return "kemarin";
+  }
+
+  if (diffDays > 1 && diffDays < 7) {
+    return `${diffDays} hari lalu`;
+  }
+
+  if (diffDays >= 7 && diffDays < 30) {
+    return `${Math.floor(diffDays / 7)} minggu lalu`;
+  }
+
+  if (diffDays >= 30 && diffDays < 365) {
+    return `${Math.floor(diffDays / 30)} bulan lalu`;
+  }
+
+  if (diffDays >= 365) {
+    return `${Math.floor(diffDays / 365)} tahun lalu`;
+  }
+
+  return "tanggal mendatang";
 }
 
 function getToday() {
@@ -697,7 +728,7 @@ export default function TransactionManager({
           </button>
         </div>
       </div>
-    ))};
+    ))}
             </div>
           )}
         </section>
