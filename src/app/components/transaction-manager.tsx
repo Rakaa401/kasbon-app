@@ -467,8 +467,8 @@ export default function TransactionManager({
         </section>
 
         <section className="mt-8 rounded-2xl border border-zinc-200 bg-white">
-  <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 md:flex-row md:items-center">
-  <div className="relative w-full md:flex-1">
+<div className="flex flex-col gap-3 border-b border-zinc-200 p-4">
+  <div className="relative w-full">
     <Search
       size={18}
       className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
@@ -483,48 +483,50 @@ export default function TransactionManager({
     />
   </div>
 
-  <select
-    value={statusFilter}
-    onChange={(event) => setStatusFilter(event.target.value)}
-    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none transition focus:border-zinc-400 md:w-auto"
-  >
-    <option value="all">Semua status</option>
-    <option value="unpaid">Belum lunas</option>
-    <option value="settled">Lunas</option>
-  </select>
+  <div className="grid grid-cols-2 gap-2 md:flex md:items-center">
+    <select
+      value={statusFilter}
+      onChange={(event) => setStatusFilter(event.target.value)}
+      className="h-10 min-w-0 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-700 outline-none transition focus:border-zinc-400 md:w-auto"
+    >
+      <option value="all">Semua status</option>
+      <option value="unpaid">Belum lunas</option>
+      <option value="settled">Lunas</option>
+    </select>
 
-  <select
-    value={typeFilter}
-    onChange={(event) => setTypeFilter(event.target.value)}
-    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none transition focus:border-zinc-400 md:w-auto"
-  >
-    <option value="all">Semua tipe</option>
-    <option value="owed_to_me">Dihutang</option>
-    <option value="i_owe">Saya hutang</option>
-  </select>
+    <select
+      value={typeFilter}
+      onChange={(event) => setTypeFilter(event.target.value)}
+      className="h-10 min-w-0 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-700 outline-none transition focus:border-zinc-400 md:w-auto"
+    >
+      <option value="all">Semua tipe</option>
+      <option value="owed_to_me">Dihutang</option>
+      <option value="i_owe">Saya hutang</option>
+    </select>
 
-  <select
-    value={sortBy}
-    onChange={(event) => setSortBy(event.target.value)}
-    className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none transition focus:border-zinc-400 md:w-auto"
-  >
-    <option value="newest">Terbaru</option>
-    <option value="oldest">Terlama</option>
-    <option value="amount_desc">Nominal terbesar</option>
-    <option value="amount_asc">Nominal terkecil</option>
-  </select>
+    <select
+      value={sortBy}
+      onChange={(event) => setSortBy(event.target.value)}
+      className="h-10 min-w-0 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-700 outline-none transition focus:border-zinc-400 md:w-auto"
+    >
+      <option value="newest">Terbaru</option>
+      <option value="oldest">Terlama</option>
+      <option value="amount_desc">Nominal terbesar</option>
+      <option value="amount_asc">Nominal terkecil</option>
+    </select>
 
-  <button
-    type="button"
-    onClick={() => setGroupByPerson((value) => !value)}
-    className={`h-11 w-full rounded-xl border px-3 text-sm font-medium transition md:w-auto ${
-      groupByPerson
-        ? "border-zinc-900 bg-zinc-900 text-white"
-        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
-    }`}
-  >
-    {groupByPerson ? "Per orang" : "Gabungkan orang"}
-  </button>
+    <button
+      type="button"
+      onClick={() => setGroupByPerson((value) => !value)}
+      className={`h-10 min-w-0 rounded-lg border px-3 text-sm font-medium transition md:w-auto ${
+        groupByPerson
+          ? "border-zinc-900 bg-zinc-900 text-white"
+          : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+      }`}
+    >
+      {groupByPerson ? "Per orang" : "Gabungkan orang"}
+    </button>
+  </div>
 </div>
 
           {error && (
@@ -649,87 +651,99 @@ export default function TransactionManager({
       </div>
     ))
   : filteredDebts.map((debt) => (
+  <div
+    key={debt.id}
+    className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between"
+  >
+    <div className="flex min-w-0 items-start gap-3">
       <div
-        key={debt.id}
-        className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between"
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+          debt.type === "owed_to_me"
+            ? "bg-emerald-50 text-emerald-600"
+            : "bg-orange-50 text-orange-600"
+        }`}
       >
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-              debt.type === "owed_to_me"
-                ? "bg-emerald-50 text-emerald-600"
-                : "bg-orange-50 text-orange-600"
-            }`}
-          >
-            {debt.type === "owed_to_me" ? (
-              <ArrowDownLeft size={18} />
-            ) : (
-              <ArrowUpRight size={18} />
-            )}
-          </div>
-
-          <div className="min-w-0">
-            <p className="truncate font-semibold text-zinc-900">
-              {debt.counterpart_name}
-            </p>
-
-            <p className="text-sm text-zinc-500">
-              {debt.type === "owed_to_me"
-                ? "Dihutang ke saya"
-                : "Saya hutang"}{" "}
-              · {formatRelativeDate(debt.created_at)}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 md:justify-end">
-          <div className="text-right">
-            <p className="font-semibold text-zinc-900">
-              {formatRupiah(debt.amount)}
-            </p>
-
-            <span
-              className={`text-xs font-medium ${
-                debt.settled_at
-                  ? "text-emerald-600"
-                  : "text-orange-600"
-              }`}
-            >
-              {debt.settled_at ? "Lunas" : "Belum lunas"}
-            </span>
-          </div>
-
-          {!debt.settled_at && (
-            <button
-              type="button"
-              onClick={() => handleSettle(debt)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-            >
-              <Check size={15} />
-              Tandai lunas
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => openEditModal(debt)}
-            className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-            aria-label="Edit"
-          >
-            <Pencil size={17} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleDelete(debt.id)}
-            className="rounded-lg p-2 text-zinc-500 hover:bg-red-50 hover:text-red-600"
-            aria-label="Hapus"
-          >
-            <Trash2 size={17} />
-          </button>
-        </div>
+        {debt.type === "owed_to_me" ? (
+          <ArrowDownLeft size={18} />
+        ) : (
+          <ArrowUpRight size={18} />
+        )}
       </div>
-    ))}
+
+      <div className="min-w-0">
+        <p className="truncate font-semibold text-zinc-900">
+          {debt.counterpart_name}
+        </p>
+
+        <p className="text-sm text-zinc-500">
+          {debt.type === "owed_to_me"
+            ? "Dihutang ke saya"
+            : "Saya hutang"}{" "}
+          · {formatRelativeDate(debt.created_at)}
+        </p>
+
+        <p
+          className={`mt-1 text-xs font-medium ${
+            debt.settled_at ? "text-emerald-600" : "text-orange-600"
+          }`}
+        >
+          {debt.settled_at ? "Lunas" : "Belum lunas"}
+        </p>
+      </div>
+    </div>
+
+    <div className="flex items-center justify-between gap-4 md:justify-end">
+      <p className="font-semibold text-zinc-900 md:hidden">
+        {formatRupiah(debt.amount)}
+      </p>
+
+      <div className="flex shrink-0 items-center gap-1">
+        {!debt.settled_at && (
+          <button
+            type="button"
+            onClick={() => handleSettle(debt)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
+          >
+            <Check size={15} />
+            Tandai lunas
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => openEditModal(debt)}
+          className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+          aria-label="Edit"
+        >
+          <Pencil size={17} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleDelete(debt.id)}
+          className="rounded-lg p-2 text-zinc-500 transition hover:bg-red-50 hover:text-red-600"
+          aria-label="Hapus"
+        >
+          <Trash2 size={17} />
+        </button>
+      </div>
+
+      <div className="hidden text-right md:block">
+        <p className="font-semibold text-zinc-900">
+          {formatRupiah(debt.amount)}
+        </p>
+
+        <span
+          className={`text-xs font-medium ${
+            debt.settled_at ? "text-emerald-600" : "text-orange-600"
+          }`}
+        >
+          {debt.settled_at ? "Lunas" : "Belum lunas"}
+        </span>
+      </div>
+    </div>
+  </div>
+))}
             </div>
           )}
         </section>
