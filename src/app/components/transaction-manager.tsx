@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import LogoutButton from "./logout-button";
 
 type Transaction = {
   id: number;
@@ -105,6 +106,8 @@ export default function TransactionManager() {
               Kelola catatan hutang dan piutang dengan mudah.
             </p>
           </div>
+
+          <LogoutButton />
 
           <button
             onClick={() => setIsOpen(true)}
